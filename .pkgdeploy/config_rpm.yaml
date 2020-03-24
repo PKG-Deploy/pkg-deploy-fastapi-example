@@ -1,0 +1,52 @@
+name: pkgdeploy-fastapi
+format: rpm
+distribution: centos7
+architecture: 64-bit
+description: A simple FastAPI project to show how PKG Deploy works
+url: http://www.pkgdeploy.com
+license: GPLv3
+maintainer: PKG Deploy Devs <devs@pkgdeploy.com>
+
+build:
+  user: pkgdeploy
+  group: pkgdeploy
+  directory: /opt/pkgdeploy/fastapi/
+  requires:
+    - python36-pip
+  commands: |
+    python3.6 -m venv ./venv/
+    ./venv/bin/pip install pipenv
+    # PIPENV_VENV_IN_PROJECT ensures the pipenv venv is created in the project
+    # directory so it is copied and owned by the correct user after install
+    PIPENV_VENV_IN_PROJECT=1 ./venv/bin/pipenv sync
+
+install:
+  requires:
+    - python36
+    - nginx
+  user: pkgdeploy
+  group: pkgdeploy
+  copy:
+    - source: ./
+      destination: /opt/pkgdeploy/fastapi/
+      user: pkgdeploy
+      group: pkgdeploy
+      permissions: 755
+    - source: .pkgdeploy/nginx.conf
+      destination: /etc/nginx/conf.d/fastapi.conf
+    - source: .pkgdeploy/fastapi.socket
+      destination: /etc/systemd/system/fastapi.socket
+    - source: .pkgdeploy/fastapi.service
+      destination: /etc/systemd/system/fastapi.service
+
+after_install: |
+  rm -f /etc/nginx/conf.d/default.conf
+  sed -i '/listen       80 default_server/d' /etc/nginx/nginx.conf
+  systemctl enable --now nginx
+  nginx -s reload
+  systemctl enable --now fastapi.socket
+
+after_upgrade: |
+  nginx -s reload
+  systemctl daemon-reload
+  systemctl restart fastapi.socket

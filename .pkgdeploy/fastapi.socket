@@ -1,0 +1,10 @@
+[Unit]
+Description=FastAPI gunicorn socket
+PartOf=fastapi.service
+
+[Socket]
+ListenStream=/var/run/fastapi.sock
+User=nginx
+
+[Install]
+WantedBy=sockets.target
